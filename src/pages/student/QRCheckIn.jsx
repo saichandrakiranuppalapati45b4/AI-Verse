@@ -1,3 +1,4 @@
+// Force deploy fix
 import { useEffect, useState, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { CheckCircle, XCircle, AlertCircle, Camera } from 'lucide-react';
