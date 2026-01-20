@@ -42,9 +42,22 @@ export const QRCheckIn = () => {
                 (decodedText, decodedResult) => {
                     // Success callback
                     console.log(`Code matched = ${decodedText}`, decodedResult);
-                    if (decodedText.length > 20) {
-                        setScanResult(decodedText);
-                        fetchRegistration(decodedText);
+
+                    let finalId = decodedText;
+                    try {
+                        // Check if it's a JSON string and extract ID
+                        const parsed = JSON.parse(decodedText);
+                        if (parsed && parsed.id) {
+                            finalId = parsed.id;
+                            console.log("Extracted ID from JSON:", finalId);
+                        }
+                    } catch (e) {
+                        // Not a JSON string, assume it's the ID directly
+                    }
+
+                    if (finalId.length > 20) {
+                        setScanResult(decodedText); // Show original text/JSON for verifying
+                        fetchRegistration(finalId);
                         stopScanner();
                     }
                 },
