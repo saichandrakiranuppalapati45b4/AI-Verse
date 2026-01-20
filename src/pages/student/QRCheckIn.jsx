@@ -138,11 +138,10 @@ export const QRCheckIn = () => {
 
             toast.success("Check-in Confirmed Successfully!");
 
-            // Reset and restart scanner
+            // Reset state (useEffect will trigger scanner restart)
             setTimeout(() => {
                 setScanResult(null);
                 setRegistrationData(null);
-                startScanner();
             }, 1000);
 
         } catch (err) {
