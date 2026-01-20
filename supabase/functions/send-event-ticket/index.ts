@@ -41,6 +41,10 @@ Deno.serve(async (req) => {
         }
 
         const event = registration.events
+
+        if (!event) {
+            throw new Error(`Ticket Generation Failed: Associated event data not found. The event may have been deleted.`)
+        }
         const recipientEmail = registration.team_leader_email
         const recipientName = registration.team_leader_name
 

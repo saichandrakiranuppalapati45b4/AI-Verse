@@ -43,14 +43,16 @@ export const AuthProvider = ({ children }) => {
                 return;
             }
 
-            // EMERGENCY BYPASS FOR UKIRANVARMA (JURY)
+            // TEMPORARY BYPASS FOR STUDENT COORDINATOR
             if (user?.email === 'ukiranvarma@gmail.com') {
-                console.log('⚡ FAST PATH: Jury detected, skipping DB fetch');
-                setUserProfile({ id: user.id, email: user.email, role: 'jury' });
+                console.log('⚡ FAST PATH: Student Coordinator detected');
+                setUserProfile({ id: user.id, email: user.email, role: 'student_coordinator' });
                 setLoading(false);
                 clearTimeout(timeoutId);
                 return;
             }
+
+
 
             if (user) {
                 fetchUserProfile(user.id).then(() => {
@@ -84,9 +86,12 @@ export const AuthProvider = ({ children }) => {
                 return;
             }
 
+
+
+
             if (user?.email === 'ukiranvarma@gmail.com') {
-                console.log('⚡ FAST PATH (Auth Change): Jury detected');
-                setUserProfile({ id: user.id, email: user.email, role: 'jury' });
+                console.log('⚡ FAST PATH (Auth Change): Student Coordinator detected');
+                setUserProfile({ id: user.id, email: user.email, role: 'student_coordinator' });
                 setLoading(false);
                 return;
             }

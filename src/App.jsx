@@ -24,6 +24,9 @@ import { SetupAdmin } from './pages/auth/SetupAdmin';
 
 // Admin Pages
 import { AdminDashboard } from './pages/admin/Dashboard';
+import { StudentDashboard } from './pages/student/Dashboard';
+import { QRCheckIn } from './pages/student/QRCheckIn';
+import { AdminLayout } from './components/layout/AdminLayout';
 import { EventsManagement } from './pages/admin/EventsManagement';
 import { JuryManagement } from './pages/admin/JuryManagement';
 import { ParticipantsManagement } from './pages/admin/ParticipantsManagement';
@@ -71,7 +74,7 @@ const DashboardRedirect = () => {
   } else if (userProfile?.role === 'jury') {
     return <Navigate to="/jury" replace />;
   } else if (userProfile?.role === 'student_coordinator') {
-    return <Navigate to="/admin/participants" replace />;
+    return <Navigate to="/student/dashboard" replace />;
   }
 
   // If no user at all, go home
@@ -227,7 +230,27 @@ function App() {
               path="/admin/participants"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'student_coordinator']}>
-                  <ParticipantsManagement />
+                  <AdminLayout>
+                    <ParticipantsManagement />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Student Coordinator Routes */}
+            <Route
+              path="/student/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['student_coordinator']}>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/qr-checkin"
+              element={
+                <ProtectedRoute allowedRoles={['student_coordinator']}>
+                  <QRCheckIn />
                 </ProtectedRoute>
               }
             />

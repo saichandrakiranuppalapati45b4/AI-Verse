@@ -292,29 +292,41 @@ export const ParticipantsManagement = () => {
     const handleSendTicket = async (registrationId) => {
         const toastId = toast.loading('Sending ticket...');
         try {
-            const response = await fetch('/api/send-event-ticket', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ registration_id: registrationId }),
+            // detailed logging/debugging removed as invoke handles details
+            const { data, error } = await supabase.functions.invoke('send-event-ticket', {
+                body: { registration_id: registrationId }
             });
 
-            const data = await response.json();
+            if (error) {
+                // If it's a function error, it might be in error object or data
+                console.error('Function Invocation Error:', error);
+                // Try to parse the error message better
+                let errorMsg = error.message;
+                try {
+                    // Sometimes context is in error.context
+                    if (error.context?.json) {
+                        const json = await error.context.json();
+                        errorMsg = json.error || json.message || errorMsg;
+                    }
+                } catch (e) { }
 
-            if (!data.success) {
-                throw new Error(data.error || 'Failed to send ticket');
+                throw new Error(errorMsg || 'Failed to send ticket via Function');
+            }
+
+            // Sometimes success is waiting in data even if no error thrown
+            if (data && !data.success) {
+                throw new Error(data.error || data.message || 'Ticket sending returned failure');
             }
 
             toast.success('Ticket sent successfully!', { id: toastId });
         } catch (error) {
             console.error('Error sending ticket:', error);
-            toast.error(error.message || 'Failed to send ticket', { id: toastId });
+            toast.error(error.message, { id: toastId, duration: 5000 });
         }
     };
 
     return (
-        <AdminLayout>
+        <div>
             <div>
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-3xl font-bold text-gray-900">Participants Management</h2>
@@ -703,6 +715,6 @@ export const ParticipantsManagement = () => {
                     </div>
                 )}
             </div>
-        </AdminLayout>
+        </div>
     );
 };
