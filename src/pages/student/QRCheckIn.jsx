@@ -237,16 +237,16 @@ export const QRCheckIn = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
                                 <div>
-                                    <p className="text-gray-500">Leader Name</p>
-                                    <p className="font-medium">{registrationData.team_leader_name}</p>
+                                    <p className="text-gray-600 font-semibold mb-1">Leader Name</p>
+                                    <p className="font-bold text-gray-900">{registrationData.team_leader_name}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500">Email</p>
-                                    <p className="font-medium">{registrationData.team_leader_email}</p>
+                                    <p className="text-gray-600 font-semibold mb-1">Email</p>
+                                    <p className="font-bold text-gray-900 break-all">{registrationData.team_leader_email}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500">College</p>
-                                    <p className="font-medium">{registrationData.college || 'N/A'}</p>
+                                    <p className="text-gray-600 font-semibold mb-1">College</p>
+                                    <p className="font-bold text-gray-900">{registrationData.college || 'N/A'}</p>
                                 </div>
                             </div>
 
