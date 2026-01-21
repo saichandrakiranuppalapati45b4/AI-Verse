@@ -235,17 +235,45 @@ export const EventsManagement = () => {
     const handleSendReminders = async () => {
         const toastId = toast.loading('Sending reminders...');
         try {
-            const response = await fetch('/api/send-event-reminders', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+            // 1. Verify Session
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+            if (sessionError || !session) {
+                console.error("Session Error:", sessionError);
+                throw new Error("No active session. Please log in again.");
+            }
+
+            console.log("Invoking function with user:", session.user.email);
+
+            // 2. Invoke Function
+            const { data, error } = await supabase.functions.invoke('send-event-reminders', {
+                body: {},
             });
 
-            const data = await response.json();
+            if (error) {
+                console.error('Function Invocation Error:', error);
 
-            // Check for error in response
-            if (!data.success) {
+                // Check for Invalid JWT - highly indicative of project mismatch
+                if (error.message && error.message.includes("Invalid JWT")) {
+                    console.error("CRITICAL: JWT Mismatch. Your frontend is likely connected to a different Supabase project than your functions.");
+                    console.error("Frontend URL:", import.meta.env.VITE_SUPABASE_URL);
+                    throw new Error("Configuration Error: Invalid JWT. Please check that your VITE_SUPABASE_URL matches the project you deployed functions to.");
+                }
+
+                // Try to parse the error message better
+                let errorMsg = error.message;
+                try {
+                    if (error.context?.json) {
+                        const json = await error.context.json();
+                        errorMsg = json.error || json.message || errorMsg;
+                    }
+                } catch (e) { }
+
+                throw new Error(errorMsg || 'Failed to send reminders via Function');
+            }
+
+            // Check for error in response data logic
+            if (data && !data.success) {
                 throw new Error(data.error || 'Failed to send reminders');
             }
 
@@ -262,8 +290,19 @@ export const EventsManagement = () => {
         }
     };
 
+    // Debugging Helper
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const projectId = supabaseUrl?.split('.')[0]?.replace('https://', '');
+
     return (
         <AdminLayout>
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 font-mono">
+                <p><strong>DEBUG CONFIGURATION:</strong></p>
+                <p>Supabase URL: {supabaseUrl}</p>
+                <p>Project ID: {projectId}</p>
+                <p>Key (Start): {import.meta.env.VITE_SUPABASE_ANON_KEY?.slice(0, 10)}...</p>
+                <p>Please verify this Project ID matches the one you deployed functions to.</p>
+            </div>
             <div>
                 <div className="flex justify-between items-center mb-6">
                     <div>

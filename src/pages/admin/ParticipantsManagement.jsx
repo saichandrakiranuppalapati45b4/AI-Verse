@@ -24,6 +24,9 @@ export const ParticipantsManagement = () => {
     const [selectedRegistrationForCheckIn, setSelectedRegistrationForCheckIn] = useState(null);
     const [attendanceLogs, setAttendanceLogs] = useState([]);
 
+    const [selectedLogDetails, setSelectedLogDetails] = useState(null);
+    const [isLogDetailsModalOpen, setIsLogDetailsModalOpen] = useState(false);
+
     useEffect(() => {
         fetchEvents();
         fetchRegistrations();
@@ -39,9 +42,8 @@ export const ParticipantsManagement = () => {
                 .select(`
                     *,
                     registrations (
-                        team_name,
-                        team_leader_name,
-                        is_team_registration
+                        *,
+                        events (title)
                     ),
                     events (title)
                 `)
@@ -63,6 +65,11 @@ export const ParticipantsManagement = () => {
     const handleOpenCheckInModal = (registration) => {
         setSelectedRegistrationForCheckIn(registration);
         setIsCheckInModalOpen(true);
+    };
+
+    const handleLogClick = (log) => {
+        setSelectedLogDetails(log);
+        setIsLogDetailsModalOpen(true);
     };
 
     const handleSubmitCheckIn = async (e) => {
@@ -596,18 +603,25 @@ export const ParticipantsManagement = () => {
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Participant / Team</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Event</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Session</th>
+                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                            <span className="sr-only">Details</span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {attendanceLogs.length === 0 ? (
                                         <tr>
-                                            <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                                            <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
                                                 No attendance records found
                                             </td>
                                         </tr>
                                     ) : (
                                         attendanceLogs.map((log) => (
-                                            <tr key={log.id} className="hover:bg-gray-50">
+                                            <tr
+                                                key={log.id}
+                                                className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                                onClick={() => handleLogClick(log)}
+                                            >
                                                 <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">
                                                     {new Date(log.created_at).toLocaleString()}
                                                 </td>
@@ -624,6 +638,9 @@ export const ParticipantsManagement = () => {
                                                         }`}>
                                                         {log.check_in_date} ({log.session})
                                                     </span>
+                                                </td>
+                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-gray-400">
+                                                    View Details &rarr;
                                                 </td>
                                             </tr>
                                         ))
@@ -680,6 +697,82 @@ export const ParticipantsManagement = () => {
                             </Button>
                         </div>
                     </form>
+                </Modal>
+
+                {/* Log Details Modal */}
+                <Modal
+                    isOpen={isLogDetailsModalOpen}
+                    onClose={() => setIsLogDetailsModalOpen(false)}
+                    title="Attendance Details"
+                >
+                    {selectedLogDetails && selectedLogDetails.registrations && (
+                        <div className="space-y-6">
+                            <div className="border-b pb-4">
+                                <h3 className="text-xl font-bold text-gray-900">
+                                    {selectedLogDetails.registrations.is_team_registration
+                                        ? selectedLogDetails.registrations.team_name
+                                        : selectedLogDetails.registrations.team_leader_name}
+                                </h3>
+                                <p className="text-gray-500">{selectedLogDetails.registrations.events?.title}</p>
+                                <div className="mt-2 text-sm text-gray-500 flex gap-4">
+                                    <span>Session: <strong>{selectedLogDetails.check_in_date} ({selectedLogDetails.session})</strong></span>
+                                    <span>Time: <strong>{new Date(selectedLogDetails.created_at).toLocaleTimeString()}</strong></span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="font-semibold text-gray-900 border-b pb-2">
+                                    {selectedLogDetails.registrations.is_team_registration ? "Team Members" : "Participant Details"}
+                                </h4>
+
+                                <div className="space-y-2">
+                                    {selectedLogDetails.registrations.is_team_registration ? (
+                                        <>
+                                            {/* Leader */}
+                                            <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
+                                                <div>
+                                                    <p className="font-medium text-gray-900">{selectedLogDetails.registrations.team_leader_name} <span className="text-xs text-gray-500">(Leader)</span></p>
+                                                    <p className="text-xs text-gray-500">{selectedLogDetails.registrations.team_leader_email}</p>
+                                                </div>
+                                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                                                    Present
+                                                </span>
+                                            </div>
+
+                                            {/* Members */}
+                                            {selectedLogDetails.registrations.team_members && selectedLogDetails.registrations.team_members.map((member, idx) => (
+                                                <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded">
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{member.name}</p>
+                                                        <p className="text-xs text-gray-500">{member.email}</p>
+                                                    </div>
+                                                    {member.checked_in ? (
+                                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                                                            Present
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full">
+                                                            Absent / Not Checked In
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
+                                            <div>
+                                                <p className="font-medium text-gray-900">{selectedLogDetails.registrations.team_leader_name}</p>
+                                                <p className="text-xs text-gray-500">{selectedLogDetails.registrations.team_leader_email}</p>
+                                            </div>
+                                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                                                Present
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </Modal>
 
                 {/* Export Modal */}
