@@ -14,6 +14,8 @@ export const QRCheckIn = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [isScanning, setIsScanning] = useState(false);
+    // New state for team member selection
+    const [selectedMembers, setSelectedMembers] = useState({});
     const scannerRef = useRef(null);
 
     useEffect(() => {
@@ -90,6 +92,7 @@ export const QRCheckIn = () => {
         setLoading(true);
         setError(null);
         setRegistrationData(null);
+        setSelectedMembers({});
 
         try {
             const { data, error } = await supabase
@@ -105,6 +108,17 @@ export const QRCheckIn = () => {
             if (!data) throw new Error("Registration not found");
 
             setRegistrationData(data);
+
+            // Initialize selected members from existing data if available
+            if (data.is_team_registration && data.team_members) {
+                const initialSelection = {};
+                data.team_members.forEach((member, index) => {
+                    // If already checked in (persisted in DB), mark as true
+                    initialSelection[index] = member.checked_in || false;
+                });
+                setSelectedMembers(initialSelection);
+            }
+
         } catch (err) {
             console.error(err);
             setError(err.message || "Failed to fetch participant details");
@@ -114,17 +128,39 @@ export const QRCheckIn = () => {
         }
     };
 
+    const handleMemberToggle = (index) => {
+        setSelectedMembers(prev => ({
+            ...prev,
+            [index]: !prev[index]
+        }));
+    };
+
     const handleConfirmCheckIn = async () => {
         if (!registrationData) return;
 
         try {
+            let updateData = { checked_in: true };
+
+            // For team registrations, update the JSON structure
+            if (registrationData.is_team_registration && registrationData.team_members) {
+                const updatedTeamMembers = registrationData.team_members.map((member, index) => ({
+                    ...member,
+                    checked_in: selectedMembers[index] || member.checked_in || false
+                }));
+                updateData.team_members = updatedTeamMembers;
+            }
+
             const { error: regError } = await supabase
                 .from('registrations')
-                .update({ checked_in: true })
+                .update(updateData)
                 .eq('id', registrationData.id);
 
             if (regError) throw regError;
 
+            // Log attendance 
+            // Note: We are logging a single entry for the group check-in action. 
+            // If granular logs are needed per student, we'd need to change the structure of attendance_logs or insert multiple.
+            // For now, consistent with previous logic:
             const { error: logError } = await supabase
                 .from('attendance_logs')
                 .insert({
@@ -142,6 +178,7 @@ export const QRCheckIn = () => {
             setTimeout(() => {
                 setScanResult(null);
                 setRegistrationData(null);
+                setSelectedMembers({});
             }, 1000);
 
         } catch (err) {
@@ -154,8 +191,12 @@ export const QRCheckIn = () => {
         setScanResult(null);
         setRegistrationData(null);
         setError(null);
+        setSelectedMembers({});
         startScanner();
     };
+
+    // Calculate how many selected for display
+    const selectedCount = Object.values(selectedMembers).filter(Boolean).length;
 
     return (
         <StudentLayout>
@@ -225,6 +266,9 @@ export const QRCheckIn = () => {
                                             : registrationData.team_leader_name}
                                     </h3>
                                     <p className="text-green-700 font-medium">{registrationData.events?.title}</p>
+                                    {registrationData.is_team_registration && (
+                                        <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide font-bold">Team Registration</p>
+                                    )}
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${registrationData.registration_status === 'approved' ? 'bg-green-200 text-green-800' :
                                     registrationData.registration_status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
@@ -236,7 +280,7 @@ export const QRCheckIn = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
                                 <div>
-                                    <p className="text-gray-600 font-semibold mb-1">Leader Name</p>
+                                    <p className="text-gray-600 font-semibold mb-1">Leader / Registrant</p>
                                     <p className="font-bold text-gray-900">{registrationData.team_leader_name}</p>
                                 </div>
                                 <div>
@@ -247,14 +291,55 @@ export const QRCheckIn = () => {
                                     <p className="text-gray-600 font-semibold mb-1">College</p>
                                     <p className="font-bold text-gray-900">{registrationData.college || 'N/A'}</p>
                                 </div>
+                                <div>
+                                    <p className="text-gray-600 font-semibold mb-1">Phone</p>
+                                    <p className="font-bold text-gray-900">{registrationData.team_leader_phone || 'N/A'}</p>
+                                </div>
                             </div>
+
+                            {/* Team Members Selection */}
+                            {registrationData.is_team_registration && registrationData.team_members && (
+                                <div className="mb-6 bg-white rounded-lg p-4 border border-green-100">
+                                    <h4 className="font-bold text-gray-800 mb-3 flex justify-between items-center">
+                                        Team Members
+                                        <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 font-normal">
+                                            {selectedCount} Selected
+                                        </span>
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {registrationData.team_members.map((member, idx) => (
+                                            <div key={idx} className="flex items-center p-3 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer" onClick={() => handleMemberToggle(idx)}>
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${selectedMembers[idx] ? 'bg-green-600 border-green-600' : 'border-gray-300 bg-white'}`}>
+                                                    {selectedMembers[idx] && <CheckCircle className="w-3 h-3 text-white" />}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-semibold text-gray-900 text-sm">{member.name}</p>
+                                                    <div className="flex gap-2 text-xs text-gray-500">
+                                                        <span>{member.email}</span>
+                                                    </div>
+                                                </div>
+                                                {member.checked_in && (
+                                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                                                        Already In
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2 text-center">
+                                        Select members present for check-in
+                                    </p>
+                                </div>
+                            )}
 
                             <Button
                                 onClick={handleConfirmCheckIn}
                                 className="w-full bg-green-600 hover:bg-green-700 h-12 text-lg shadow-lg"
                                 disabled={registrationData.registration_status !== 'approved'}
                             >
-                                Confirm Check-In
+                                {registrationData.is_team_registration
+                                    ? `Confirm Check-In (${selectedCount})`
+                                    : "Confirm Check-In"}
                             </Button>
                         </CardBody>
                     </Card>
